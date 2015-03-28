@@ -17,7 +17,7 @@ when name == "braden"
   puts "Badass!"
 
 else 
-	puts "something or not"
+	puts "something or not or yes"
 
 end
 
