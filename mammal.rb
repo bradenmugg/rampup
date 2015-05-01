@@ -1,26 +1,20 @@
-class Mammal
-  def breathe
-    puts "Inhale and Exhale"
+module Mammal
+  def breathe_air
+    puts "inhale air"
   end
 end
 
-class Human < Mammal
-  def walk
-    puts "walking"
+module Feline
+  def purr
+    puts "purrrr"
   end
 end
 
-class Dolphin < Human
-  def swim
-    puts "swimming"
-  end
+class Cat
+  include Feline
+  include Mammal
 end
 
-person = Human.new
-person.walk
-person.breathe
-
-dolphin = Dolphin.new
-dolphin.swim
-dolphin.breathe
-dolphin.walk
+cat = Cat.new
+cat.purr
+cat.breathe_air
