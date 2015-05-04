@@ -39,32 +39,44 @@ class Restaurant
     puts "Please enter a zip code"
     zipcode = gets.chomp
     encoded_zip = URI.encode(zipcode)
-    response = HTTParty.get("https://data.cityofnewyork.us/resource/xx67-kt59.json?zipcode=#{encoded_zip}")
+    response = HTTParty.get("https://data.cityofnewyork.us/resource/xx67-kt59.json?$limit=5000&zipcode=#{encoded_zip}")
     result = JSON.parse(response.body)
     remove_duplicates(result)
   end
 
   def get_category
-    response = HTTParty.get("https://data.cityofnewyork.us/resource/xx67-kt59.json")
-    result = JSON.parse(response.body)
+    count = 0
     restaurant_category = []
-    result.each do |x|
-      if !restaurant_category.include?("#{x["cuisine_description"]}")
-        restaurant_category.push(x["cuisine_description"])
+    File.open("categories.txt", "r") do |f|
+      f.each_line do |line|
+        puts "#{count + 1}. #{line.downcase.capitalize}"
+        restaurant_category.push("#{line}")
+        count += 1
+        if count % 30 == 0
+          puts "Enter a number to choose a category or 0 to see more options:"
+          choice = gets.chomp.to_i
+          if choice != 0
+            category = restaurant_category[(choice - 1)]
+            encoded_category = URI.encode(category.chomp)
+            category_response = HTTParty.get("https://data.cityofnewyork.us/resource/xx67-kt59.json?$limit=5000&cuisine_description=#{encoded_category}")
+            category_result = JSON.parse(category_response.body)
+            remove_duplicates(category_result)
+            return
+          end
+        end
       end
     end
-    count = 1
-    restaurant_category.each do |y|
-      puts "#{count}. #{y}"
-      count += 1
-    end
-    puts "Enter a number to choose a category:"
+    puts "Enter a number to choose a category or 0 to start the list again:"
     choice = gets.chomp.to_i
-    category = restaurant_category[(choice - 1)]
-    encoded_category = URI.encode(category)
-    category_response = HTTParty.get("https://data.cityofnewyork.us/resource/xx67-kt59.json?cuisine_description=#{encoded_category}")
-    category_result = JSON.parse(category_response.body)
-    remove_duplicates(category_result)
+    if choice == 0
+      get_category
+    else
+      category = restaurant_category[(choice - 1)]
+      encoded_category = URI.encode(category.chomp)
+      category_response = HTTParty.get("https://data.cityofnewyork.us/resource/xx67-kt59.json?$limit=5000&cuisine_description=#{encoded_category}")
+      category_result = JSON.parse(category_response.body)
+      remove_duplicates(category_result)
+    end
   end
 
   def get_name
@@ -84,24 +96,40 @@ class Restaurant
 
 
   def choose_restaurant
-    count = 1
-    self.restaurants_list.each do |y|
-      puts "#{count}: #{y["dba"]}"
-      count += 1
-    end
+    puts "Your search returned #{self.restaurants_list.size} results:"
     puts
-    puts "Enter a number to choose a restaurant:"
+    count = 0
+    self.restaurants_list.each do
+      if "#{self.restaurants_list[(count)]["dba"]}" != ""
+        puts "#{count + 1}: #{self.restaurants_list[(count)]["dba"].downcase.capitalize}"
+      end
+      count += 1
+      if count % 30 == 0
+        puts
+        puts "Enter a number to choose a restaurant or 0 to see more options:"
+        choice = gets.chomp.to_i
+        if choice != 0
+          self.chosen_restaurant = self.restaurants_list[(choice - 1)]
+          return
+        end
+      end
+    end
+    puts "Enter a number to choose a restaurant or 0 to start the list again:"
     choice = gets.chomp.to_i
-    self.chosen_restaurant = self.restaurants_list[(choice - 1)]
+    if choice == 0
+      choose_restaurant
+    else
+      self.chosen_restaurant = self.restaurants_list[(choice - 1)]
+    end
   end
 
   def restaurant_options
     menu_choice = 0
     while menu_choice != 6
-    puts "1. Display the health scores for #{self.chosen_restaurant["dba"]}"
-    puts "2. Display health code violations for #{self.chosen_restaurant["dba"]}"
-    puts "3. Display the address for #{self.chosen_restaurant["dba"]}"
-    puts "4. Display Yelp reviews for #{self.chosen_restaurant["dba"]}"
+    puts "1. Display the health scores for \"#{self.chosen_restaurant["dba"].downcase.capitalize}\""
+    puts "2. Display health code violations for \"#{self.chosen_restaurant["dba"].downcase.capitalize}\""
+    puts "3. Display the address for \"#{self.chosen_restaurant["dba"].downcase.capitalize}\""
+    puts "4. Display Yelp reviews for \"#{self.chosen_restaurant["dba"].downcase.capitalize}\""
     puts "5. Return to Main Menu"
     puts "6. Exit the program"
     menu_choice = gets.chomp.to_i
@@ -159,7 +187,7 @@ class Restaurant
     loops = scores.size
     count = 0
     (1..loops).each do
-      puts "On #{inspection_dates[count]} #{self.chosen_restaurant["dba"]} received a score of #{scores[count]}"
+      puts "On #{inspection_dates[count]} #{self.chosen_restaurant["dba"].downcase.capitalize} received a score of #{scores[count]}"
       count += 1
     end
   end
@@ -172,13 +200,13 @@ class Restaurant
   end
 
   def address
-    puts "#{self.chosen_restaurant["dba"]} is located at #{self.chosen_restaurant["building"]} #{self.chosen_restaurant["street"]} in #{self.chosen_restaurant["boro"]}, New York"
+    puts "#{self.chosen_restaurant["dba"].downcase.capitalize} is located at #{self.chosen_restaurant["building"]} #{self.chosen_restaurant["street"]} in #{self.chosen_restaurant["boro"]}, New York"
   end
 
   def yelp_ratings
     response = self.yelp_client.phone_search("+1#{self.chosen_restaurant["phone"]}")
     if response.businesses[0].to_s != ""
-      puts "#{self.chosen_restaurant["dba"]} has an average rating of #{response.businesses[0].rating} out of #{response.businesses[0].review_count} reviews."
+      puts "#{self.chosen_restaurant["dba"].downcase.capitalize} has an average rating of #{response.businesses[0].rating} out of #{response.businesses[0].review_count} reviews."
     else
       puts "There are no reviews available for this restaurant yet. Please select another option."
     end
